@@ -21,6 +21,8 @@ type Action struct {
 	eventID string
 }
 
+type Worker struct{}
+
 func (app *Application) Run(ctx context.Context) error {
 	eventsStream := app.EventBus.Incoming(ctx)
 
@@ -52,12 +54,17 @@ func (app *Application) HandleEvent(ctx context.Context, event Event) {
 			return
 		}
 
+		_ = worker
 	}
 
 }
 
-func (app *Application) ActionsForEvent(<-chan Action, error) {
+func (app *Application) ActionsForEvent(ctx context.Context, event Event) (<-chan Action, error) {
 	panic("uninmplemented")
+}
+
+func (app *Application) CreateWorkerForAction(ctx context.Context, action Action) (Worker, error) {
+	panic("unimplemented")
 }
 
 func (app *Application) handleErr(err error) {
