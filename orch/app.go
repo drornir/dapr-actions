@@ -12,6 +12,7 @@ type EventBus interface {
 	Incoming(context.Context) <-chan Event
 	Close()
 }
+
 type Event struct {
 	Ctx context.Context
 	ID  string
@@ -30,7 +31,8 @@ func (app *Application) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			app.Close()
-			return ctx.Err()
+			return ctx.
+				Err()
 
 		case event := <-eventsStream:
 			app.HandleEvent(ctx, event)
@@ -56,7 +58,6 @@ func (app *Application) HandleEvent(ctx context.Context, event Event) {
 
 		_ = worker
 	}
-
 }
 
 func (app *Application) ActionsForEvent(ctx context.Context, event Event) (<-chan Action, error) {
@@ -68,7 +69,6 @@ func (app *Application) CreateWorkerForAction(ctx context.Context, action Action
 }
 
 func (app *Application) handleErr(err error) {
-
 }
 
 func (app *Application) Close() {
