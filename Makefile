@@ -37,7 +37,7 @@ build: ## builds
 
 .PHONY: fmt
 fmt: ## format
-	echo todo
+	$(GOFUMPT) -l -extra .
 
 .PHONY: dev-deps
 dev-deps: $(BINGO) ## installs dev-deps and links them for local use (see below)
@@ -51,7 +51,18 @@ kind-create: $(KIND) ## create the kind cluster
 kind-delete: $(KIND) ## delete the kind cluster
 	kind delete cluster -n dapr-actions
 
+.PHONY: kctx
+kctx: ## set kubectl context to kind
+	kubectl config use-context kind-dapr-actions
+
 .PHONY: dapr-init
-dapr-init:
-	kubectl
+dapr-init: ## init dev cluster
 	$(DAPR) init --kubernetes --dev
+
+.PHONY: dapr-dash
+dapr-dash: ## opens dapr dashboard on port 9999
+	$(DAPR) dashboard -k -p 9999
+
+.PHONY: dapr-status
+dapr-status: ## get status of dapr in the cli
+	$(DAPR) status -k

@@ -43,7 +43,7 @@ Something needs to run those go scripts, which is what I want to use dapr for. E
 
 ```
 event-streamer --> Orchestrator -=> Actions --> Process/Run
-                    ^^^^                
+                    ^^^^
                      actionsctl
 ```
 
@@ -59,3 +59,12 @@ Each process is monitored for its success or fail state, saving logs and all the
 
 An **actionsctl** should be written in order to query the system and give high level commands to the system. This is like kubectl and many other k8s native apps. I want it to be in the same standard format that the events come in, so the Orchestrator doesn't need to speak multiple languages. The orchestrator already needs to speak "K8s", so maybe passing CRD like structures is best.
 
+## Example App
+
+The app that this tool will be developed around is an app that checks
+for new versions of dependencies in your go.mod.
+
+It will wrap other tools and give appregated results and allow to create a PR
+for updating all the deps. It's like github dependabot.
+
+This will hopefully be a POC for another pet project :)
