@@ -1,15 +1,17 @@
-module github.com/drornir/dapr-actions
+module github.com/drornir/dapr-actions/orch
 
-go 1.22.1
+go 1.22.2
+
+require github.com/dapr/go-sdk v1.10.1
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/dapr/dapr v1.13.0 // indirect
-	github.com/dapr/go-sdk v1.10.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/marusama/semaphore/v2 v2.5.0 // indirect
 	github.com/microsoft/durabletask-go v0.4.1-0.20240122160106-fb5c4c05729d // indirect
 	go.opentelemetry.io/otel v1.23.1 // indirect

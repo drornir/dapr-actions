@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/spf13/afero"
-
 )
 
 var FS afero.Fs

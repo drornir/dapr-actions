@@ -1,6 +1,6 @@
 default: help
 
-SHELL=/bin/zsh
+SHELL=/bin/sh
 
 include .bingo/Variables.mk
 DAPR := $(shell brew --prefix)/bin/dapr # TODO
@@ -37,7 +37,7 @@ build: ## builds
 
 .PHONY: fmt
 fmt: ## format
-	$(GOFUMPT) -l -extra .
+	$(GOFUMPT) -w -extra .
 
 .PHONY: dev-deps
 dev-deps: $(BINGO) ## installs dev-deps and links them for local use (see below)
