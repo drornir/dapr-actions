@@ -11,8 +11,9 @@ type ActionRunner struct {
 }
 
 func (ar *ActionRunner) createWorkflow(ctx context.Context) error {
-	ar.daprClient()
-
+	err := ar.daprClient()
+	_ = err
+	return nil
 }
 
 func (ar *ActionRunner) daprClient() client.Client {

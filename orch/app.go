@@ -157,7 +157,7 @@ func (app *Application) ActionsForEvent(ctx context.Context, event Event) ([]Act
 }
 
 func (app *Application) createRunnerForAction(ctx context.Context, action Action) (*ActionRunner, error) {
-
+	return nil, nil
 }
 
 func (app *Application) RegisterDaprWorkflow(wf workflow.Workflow) {
