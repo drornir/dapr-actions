@@ -2,12 +2,14 @@ module github.com/drornir/dapr-actions/cmd
 
 go 1.22.2
 
-require github.com/drornir/dapr-actions/orch v0.0.0-20240419124519-e9834b545ea3
+require (
+	github.com/dapr/go-sdk v1.10.1
+	github.com/drornir/dapr-actions/orch v0.0.0-20240419124519-e9834b545ea3
+)
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/dapr/dapr v1.13.0 // indirect
-	github.com/dapr/go-sdk v1.10.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
