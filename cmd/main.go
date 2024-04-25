@@ -8,6 +8,7 @@ import (
 	"os/signal"
 
 	"github.com/dapr/go-sdk/client"
+	"github.com/dapr/go-sdk/workflow"
 
 	"github.com/drornir/dapr-actions/orch"
 )
@@ -36,12 +37,20 @@ func main() {
 	}
 	defer daprClient.Close()
 
-	var eventBus orch.EventBus
+	inMemEventBus := &orch.InMemQueueBus{}
+	defer inMemEventBus.Close()
+	testEvent := orch.Event{
+		Ctx: ctx,
+		ID:  "0",
+	}
+	inMemEventBus.Emit(ctx, testEvent)
 
-	orchestrator, err := orch.NewApplication(ctx, logger, eventBus, daprClient)
+	orchestrator, err := orch.NewApplication(ctx, logger, inMemEventBus, daprClient)
 	if err != nil {
 		fatal("creating new orchestrator: %w", err)
 	}
+
+	orchestrator.RegisterDaprWorkflow(ExampleWorkflow)
 
 	if err := orchestrator.Run(ctx); err != nil {
 		fatal("orchestrator exited with error: %w", err)
@@ -51,4 +60,8 @@ func main() {
 func fatal(f string, a ...any) {
 	err := fmt.Errorf(f, a...)
 	panic(err)
+}
+
+func ExampleWorkflow(wctx *workflow.WorkflowContext) (any, error) {
+	i
 }

@@ -3,30 +3,33 @@ package orch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
-	"sync"
 
 	"github.com/dapr/go-sdk/client"
 	"github.com/dapr/go-sdk/workflow"
 )
+
+const DEFAULT_CHANNEL_BUFFER_SIZE = 1
 
 // Application is an initialized Orchestrator ready to run
 type Application struct {
 	ctx    context.Context
 	logger *slog.Logger
 
-	eventsStream chan Event
+	eventsStream <-chan Event
+	actionsIndex *ActionsIndex
 	runnersCh    chan *ActionRunner
 
-	daprClient     client.Client
-	daprWorker     *workflow.WorkflowWorker
-	daprWorkerLock sync.RWMutex
+	daprClient client.Client
+	daprWorker *workflow.WorkflowWorker
 
-	closers []func() error
+	errsChan chan error
+	closers  []func() error
 }
 
-func NewApplication(ctx context.Context, logger *slog.Logger, eb EventBus, daprClient client.Client) (*Application, error) {
+func NewApplication(ctx context.Context, logger *slog.Logger, eb EventBusReader, daprClient client.Client) (*Application, error) {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	}
@@ -34,22 +37,27 @@ func NewApplication(ctx context.Context, logger *slog.Logger, eb EventBus, daprC
 
 	daprWorker, err := workflow.NewWorker(workflow.WorkerWithDaprClient(daprClient))
 	if err != nil {
-		return nil, ErrorDapr{Ctx: context.TODO(), Msg: "initializing dapr workflow worker", Err: err}
+		return nil, ErrorDapr{Ctx: ctx, Msg: "initializing dapr workflow worker", Err: err}
 	} // errors below this point need to call daprWorker.Shutdown
 
-	eventsStream := make(chan Event)
+	eventsStream := make(chan Event, DEFAULT_CHANNEL_BUFFER_SIZE)
 	go func() {
 		for e := range eb.Incoming(ctx) {
 			eventsStream <- e
 		}
 	}()
 
-	runnersCh := make(chan *ActionRunner)
+	runnersCh := make(chan *ActionRunner, DEFAULT_CHANNEL_BUFFER_SIZE)
+	errsChan := make(chan error, DEFAULT_CHANNEL_BUFFER_SIZE)
 
 	closers := []func() error{
 		daprWorker.Shutdown,
-		func() error { close(eventsStream); return nil },
-		func() error { close(runnersCh); return nil },
+		func() error {
+			close(eventsStream)
+			close(runnersCh)
+			close(errsChan)
+			return nil
+		},
 	}
 
 	app := &Application{
@@ -57,14 +65,16 @@ func NewApplication(ctx context.Context, logger *slog.Logger, eb EventBus, daprC
 		daprClient:   daprClient,
 		daprWorker:   daprWorker,
 		eventsStream: eventsStream,
+		actionsIndex: &ActionsIndex{ /* TODO */ },
 		runnersCh:    runnersCh,
 		closers:      closers,
+		errsChan:     errsChan,
 	}
 	return app, nil
 }
 
-// EventBus is used to to read incoming Events.
-type EventBus interface {
+// EventBusReader is used to to read incoming Events.
+type EventBusReader interface {
 	Incoming(context.Context) <-chan Event
 }
 
@@ -81,11 +91,10 @@ type Action struct {
 	EventID string
 
 	WorkflowName string
+	TemplateName string
 }
 
 func (app *Application) Run(ctx context.Context) error {
-	app.daprWorkerLock.Lock()
-	defer app.daprWorkerLock.Unlock()
 	if err := app.daprWorker.Start(); err != nil {
 		return ErrorDapr{
 			Ctx: ctx,
@@ -120,14 +129,14 @@ func (app *Application) HandleEvent(ctx context.Context, event Event) {
 
 	actions, err := app.ActionsForEvent(ctx, event)
 	if err != nil {
-		app.handleErr(err)
+		app.handleErr("getting actions for event: %w", err)
 		return
 	}
 
 	for _, action := range actions {
-		runner, err := app.createRunnerForAction(ctx, action)
+		runner, err := app.createRunnerForAction(action)
 		if err != nil {
-			app.handleErr(err)
+			app.handleErr("creating runner for action %v: %w", action, err)
 			continue
 		}
 
@@ -135,35 +144,33 @@ func (app *Application) HandleEvent(ctx context.Context, event Event) {
 	}
 }
 
-// TODO
 func (app *Application) ActionsForEvent(ctx context.Context, event Event) ([]Action, error) {
-	var actions []Action
-
-	// TODO check a registry for matching actions for this event
-
-	// TODO loop results
-	action := Action{
-		app:          app,
-		Ctx:          event.Ctx,
-		ID:           "0", // TODO index of loop, as string
-		EventID:      event.ID,
-		WorkflowName: "BuildDaprActions",
+	actions, err := app.actionsIndex.ForEvent(ctx, event)
+	if err != nil {
+		return nil, fmt.Errorf("getting actions for event: %w", err)
 	}
 
-	actions = append(actions, action)
-	//
+	for i := range actions {
+		actions[i].app = app
+	}
 
 	return actions, nil
 }
 
-func (app *Application) createRunnerForAction(ctx context.Context, action Action) (*ActionRunner, error) {
-	return nil, nil
+func (app *Application) createRunnerForAction(action Action) (*ActionRunner, error) {
+	runner := &ActionRunner{
+		action: &action,
+	}
+
+	return runner, nil
 }
 
-func (app *Application) RegisterDaprWorkflow(wf workflow.Workflow) {
-	app.daprWorkerLock.Lock()
-	defer app.daprWorkerLock.Unlock()
-	app.daprWorker.RegisterWorkflow(wf)
+func (app *Application) RegisterAction(template ActionTemplate) {
+	app.actionsIndex.RegisterActionTemplate(template)
+}
+
+func (app *Application) RegisterDaprWorkflow(wf workflow.Workflow) error {
+	return app.daprWorker.RegisterWorkflow(wf)
 }
 
 func (app *Application) queueRunner(runner *ActionRunner) {
@@ -172,6 +179,7 @@ func (app *Application) queueRunner(runner *ActionRunner) {
 	}()
 }
 
-func (app *Application) handleErr(err error) {
-	panic(err)
+func (app *Application) handleErr(f string, a ...any) {
+	err := fmt.Errorf(f, a...)
+	app.errsChan <- err
 }
